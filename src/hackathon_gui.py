@@ -98,7 +98,7 @@ SIGNAL_PROFILES = {
     },
     "gsr": {
         "label": "GSR", "unit": "\u00b5S", "y_range": 25,
-        "bit_resolution": 12, "coupling": "DC", "operation_mode": "Normal",
+        "bit_resolution": 12, "coupling": "DC", "operation_mode": "GSR",
     },
 }
 SIGNAL_TYPE_KEYS = list(SIGNAL_PROFILES.keys())  # stable order
@@ -777,6 +777,21 @@ if HAS_GUI:
             ])
             record_layout.addWidget(self.label_combo, 1, 1)
 
+            record_layout.addWidget(QLabel("Save to:"), 2, 0)
+            dir_row = QHBoxLayout()
+            self.output_dir_label = QLabel(self.output_dir)
+            self.output_dir_label.setStyleSheet("font-size: 10px; color: #aaa;")
+            self.output_dir_label.setWordWrap(True)
+            dir_row.addWidget(self.output_dir_label, 1)
+            browse_btn = QPushButton("Browse...")
+            browse_btn.setMaximumWidth(70)
+            browse_btn.setStyleSheet("font-size: 10px;")
+            browse_btn.clicked.connect(self.choose_output_dir)
+            dir_row.addWidget(browse_btn)
+            dir_widget = QWidget()
+            dir_widget.setLayout(dir_row)
+            record_layout.addWidget(dir_widget, 2, 1)
+
             self.record_btn = QPushButton("RECORD")
             self.record_btn.setStyleSheet("""
                 QPushButton {
@@ -788,12 +803,12 @@ if HAS_GUI:
             """)
             self.record_btn.clicked.connect(self.toggle_recording)
             self.record_btn.setEnabled(False)
-            record_layout.addWidget(self.record_btn, 2, 0, 1, 2)
+            record_layout.addWidget(self.record_btn, 3, 0, 1, 2)
 
             self.record_status = QLabel("Not recording")
             self.record_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self.record_status.setStyleSheet("font-size: 11px;")
-            record_layout.addWidget(self.record_status, 3, 0, 1, 2)
+            record_layout.addWidget(self.record_status, 4, 0, 1, 2)
 
             left_layout.addWidget(record_group)
 
@@ -886,6 +901,8 @@ if HAS_GUI:
         @staticmethod
         def _infer_signal_type(ch) -> str:
             """Guess signal type from a BioRadio ChannelConfig's hardware settings."""
+            if hasattr(ch, 'operation_mode') and int(ch.operation_mode) == int(BioPotentialMode.GSR):
+                return "gsr"
             if hasattr(ch, 'bit_resolution'):
                 if ch.bit_resolution == 24:
                     return "eeg"
@@ -1284,11 +1301,19 @@ if HAS_GUI:
                         new_coupling = (CouplingType.AC
                                         if profile["coupling"] == "AC"
                                         else CouplingType.DC)
+                        new_op_mode = BioPotentialMode[profile["operation_mode"]]
+                        new_name = f"{profile['label']}{ch_idx}"
+                        if ch.name.strip() != new_name:
+                            ch.name = new_name
+                            changed = True
                         if ch.bit_resolution != new_bit_res:
                             ch.bit_resolution = new_bit_res
                             changed = True
                         if ch.coupling != new_coupling:
                             ch.coupling = new_coupling
+                            changed = True
+                        if ch.operation_mode != new_op_mode:
+                            ch.operation_mode = new_op_mode
                             changed = True
 
                         if changed:
@@ -1492,7 +1517,7 @@ if HAS_GUI:
                 self.buffer.add_samples(samples, timestamps)
             self.sample_count += len(samples)
 
-            if self.recording and self.recording_buffer:
+            if self.recording and self.recording_buffer is not None:
                 self.recording_buffer.add_samples(samples, timestamps)
 
         # -- Plot Update --
@@ -1528,10 +1553,18 @@ if HAS_GUI:
             # Recording duration
             if self.recording and self.record_start_time:
                 dur = time.time() - self.record_start_time
-                n_rec = len(self.recording_buffer) if self.recording_buffer else 0
+                n_rec = len(self.recording_buffer) if self.recording_buffer is not None else 0
                 self.record_status.setText(f"Recording: {dur:.1f}s ({n_rec} samples)")
 
         # -- Recording --
+
+        def choose_output_dir(self):
+            directory = QFileDialog.getExistingDirectory(
+                self, "Select Output Directory", self.output_dir)
+            if directory:
+                self.output_dir = directory
+                self.output_dir_label.setText(directory)
+                self.log(f"Output directory: {directory}")
 
         def toggle_recording(self):
             if self.recording:
@@ -1558,12 +1591,16 @@ if HAS_GUI:
             self.recording = False
             duration = time.time() - self.record_start_time if self.record_start_time else 0
 
-            if self.recording_buffer:
+            if self.recording_buffer is not None:
                 data, timestamps = self.recording_buffer.get_all()
                 if len(data) > 0:
-                    filepath = self.save_recording(data, timestamps, duration)
-                    self.log(f"Saved {len(data)} samples ({duration:.1f}s) to {filepath}")
-                    self.record_status.setText(f"Saved: {os.path.basename(filepath)}")
+                    try:
+                        filepath = self.save_recording(data, timestamps, duration)
+                        self.log(f"Saved {len(data)} samples ({duration:.1f}s) to {filepath}")
+                        self.record_status.setText(f"Saved: {os.path.basename(filepath)}")
+                    except Exception as e:
+                        self.log(f"Save error: {e}")
+                        self.record_status.setText("Save FAILED — check log")
                 else:
                     self.record_status.setText("No data recorded")
                 self.recording_buffer = None
@@ -1619,11 +1656,11 @@ if HAS_GUI:
 
                 # Data rows
                 for i in range(len(data)):
-                    ts = timestamps[i] if i < len(timestamps) else 0
+                    ts = float(timestamps[i]) if i < len(timestamps) else 0.0
                     if data.ndim > 1:
-                        row = [f"{ts:.6f}"] + [f"{v:.6f}" for v in data[i]]
+                        row = [ts] + [float(v) for v in data[i]]
                     else:
-                        row = [f"{ts:.6f}", f"{data[i]:.6f}"]
+                        row = [ts, float(data[i])]
                     writer.writerow(row)
 
             return filepath
