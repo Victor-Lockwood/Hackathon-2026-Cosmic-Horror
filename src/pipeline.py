@@ -154,11 +154,15 @@ def load_classifier(path):
     return clf
 
 
-def run_classifier(X, y, classifier_path, print_stats=True, clf=None):
+def run_classifier(X, y, classifier_path="", print_stats=True, clf=None):
     """
     Run the classifier on the input data.  If true labels aren't known, pass in None for y.
     """
     if clf is None:
+        if classifier_path == "":
+            print("No path specified for classifier")
+            return
+
         clf = load_classifier(classifier_path)
 
     y_pred = clf.predict(X)
@@ -166,9 +170,11 @@ def run_classifier(X, y, classifier_path, print_stats=True, clf=None):
     if print_stats:
         if y is None:
             print("No labels to compare against.")
-            return
+            return y_pred
 
         print(classification_report(y, y_pred))
+
+    return y_pred
 
 def main():
 
