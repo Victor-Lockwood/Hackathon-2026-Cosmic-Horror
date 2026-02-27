@@ -86,10 +86,14 @@ def create_feature_df(df, fs, window_ms=250, overlap=0.5, labels=None):
         features = extract_features_window(window, channels)
         feature_rows.append(features)
 
+    if len(data) <= window_size:
+        features = extract_features_window(data, channels)
+        feature_rows.append(features)
+
     feature_df = pd.DataFrame(feature_rows)
 
     if labels is not None:
-        feature_df["Label"] = labels[:len(feature_df)]
+        feature_df["label"] = labels[:len(feature_df)]
 
     return feature_df
 
