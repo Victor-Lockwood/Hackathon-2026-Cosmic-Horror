@@ -16,21 +16,82 @@ Usage (from classifier pipeline):
 """
 
 import json
+import logging
 import os
 import time
 import threading
 import queue
+import ctypes
+from contextlib import contextmanager
 from enum import Enum, auto
 from pathlib import Path
+from ctypes import CFUNCTYPE, c_void_p, c_char_p, c_int
 
-try:
-    import fluidsynth
-    HAS_FLUIDSYNTH = True
-except ImportError:
-    HAS_FLUIDSYNTH = False
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Phase 2: Chord & Instrument Mapping
+# FluidSynth logging suppression
+# ---------------------------------------------------------------------------
+
+FLUID_PANIC = 0
+FLUID_ERR = 1
+FLUID_WARN = 2
+FLUID_INFO = 3
+FLUID_DBG = 4
+
+# Keep a reference to the callback to prevent garbage collection
+_FLUID_LOG_CALLBACK = None
+
+def _silence_fluidsynth_logging():
+    """Register a no-op FluidSynth log callback for noisy levels."""
+    global _FLUID_LOG_CALLBACK
+    try:
+        import fluidsynth
+        lib = getattr(fluidsynth, "_fl", None)
+        if not lib:
+            return
+
+        # Define the callback type: void (*fluid_log_function_t)(int level, const char *message, void *data)
+        log_func_t = CFUNCTYPE(None, c_int, c_char_p, c_void_p)
+
+        def noop_log(level, message, data):
+            pass
+
+        _FLUID_LOG_CALLBACK = log_func_t(noop_log)
+
+        set_log_func = getattr(lib, "fluid_set_log_function", None)
+        if set_log_func:
+            # Silence PANIC (0), ERR (1), WARN (2), and INFO (3)
+            for level in [FLUID_PANIC, FLUID_ERR, FLUID_WARN, FLUID_INFO]:
+                set_log_func(level, _FLUID_LOG_CALLBACK, None)
+    except Exception:
+        pass
+
+
+@contextmanager
+def _suppress_stderr():
+    """Fallback: suppress C-level stderr output during setup."""
+    try:
+        devnull = os.open(os.devnull, os.O_WRONLY)
+        old_stderr = os.dup(2)
+        os.dup2(devnull, 2)
+        yield
+    finally:
+        os.dup2(old_stderr, 2)
+        os.close(devnull)
+        os.close(old_stderr)
+
+
+with _suppress_stderr():
+    try:
+        _silence_fluidsynth_logging()
+        import fluidsynth
+        HAS_FLUIDSYNTH = True
+    except ImportError:
+        HAS_FLUIDSYNTH = False
+
+# ---------------------------------------------------------------------------
+# Chord and instrument mapping
 # ---------------------------------------------------------------------------
 
 # Chord voicings as MIDI note numbers.
@@ -131,7 +192,7 @@ def get_song_progression(song_name, section=None):
     return chords
 
 # ---------------------------------------------------------------------------
-# Phase 3: State Machine
+# Playback state machine
 # ---------------------------------------------------------------------------
 
 class PlayerState(Enum):
@@ -222,7 +283,7 @@ class MidiStateMachine:
 
 
 # ---------------------------------------------------------------------------
-# Phase 1 & 4: Audio Foundation + Integration API
+# Audio controller and integration API
 # ---------------------------------------------------------------------------
 
 class MidiController:
@@ -281,23 +342,33 @@ class MidiController:
                 "pyfluidsynth is not installed. Run: pip install pyfluidsynth"
             )
 
-        self._fs = fluidsynth.Synth(gain=self.gain)
+        with _suppress_stderr():
+            # Disable MIDI input backend to avoid startup warnings on systems
+            # without MIDI input devices.
+            self._fs = fluidsynth.Synth(
+                gain=self.gain,
+                **{"midi.driver": "none"}
+            )
 
-        # Try audio drivers in order of preference for Windows
-        for driver in ["wasapi", "dsound", "waveout"]:
-            try:
-                self._fs.start(driver=driver)
-                print(f"[MidiController] Audio driver: {driver}")
-                break
-            except Exception:
-                continue
-        else:
-            # Last resort: let FluidSynth pick
-            self._fs.start()
+            # Try preferred Windows audio drivers first.
+            selected_driver = None
+            for driver in ["wasapi", "dsound", "waveout"]:
+                try:
+                    self._fs.start(driver=driver, midi_driver="none")
+                    selected_driver = driver
+                    break
+                except Exception:
+                    continue
+            else:
+                # Last resort: let FluidSynth pick
+                self._fs.start(midi_driver="none")
 
-        self._sfid = self._fs.sfload(self.soundfont_path)
-        if self._sfid == -1:
-            raise RuntimeError(f"Failed to load SoundFont: {self.soundfont_path}")
+            self._sfid = self._fs.sfload(self.soundfont_path)
+            if self._sfid == -1:
+                raise RuntimeError(f"Failed to load SoundFont: {self.soundfont_path}")
+
+        if selected_driver:
+            logger.info(f"Audio driver: {selected_driver}")
 
         # Default to nylon guitar
         self._fs.program_select(self._channel, self._sfid, 0, 24)
@@ -306,7 +377,7 @@ class MidiController:
         self._running = True
         self._thread = threading.Thread(target=self._audio_loop, daemon=True)
         self._thread.start()
-        print(f"[MidiController] Started — SoundFont: {self.soundfont_path}")
+        logger.info(f"Started - SoundFont: {self.soundfont_path}")
 
     def stop(self):
         """Shut down gracefully: all notes off, clean up FluidSynth."""
@@ -320,7 +391,7 @@ class MidiController:
         if self._fs:
             self._fs.delete()
             self._fs = None
-        print("[MidiController] Stopped.")
+        logger.info("Stopped.")
 
     # -- Public API --
 
@@ -344,14 +415,14 @@ class MidiController:
         prog = get_song_progression(song_name, section=section)
         if prog is None:
             available = list_songs()
-            print(f"[MidiController] Unknown song: {song_name}")
-            print(f"[MidiController] Available: {available}")
+            logger.info(f"Unknown song: {song_name}")
+            logger.info(f"Available: {available}")
             return
         self._progression = prog
         self._progression_index = 0
         song = load_song(song_name)
         title = song.get("title", song_name) if song else song_name
-        print(f"[MidiController] Progression mode: {title} -> {prog}")
+        logger.info(f"Progression mode: {title} -> {prog}")
 
     def clear_progression(self):
         """Exit progression mode, return to free-play."""
@@ -376,7 +447,7 @@ class MidiController:
         """Play a chord by name (convenience for testing)."""
         notes = CHORDS.get(chord_name)
         if notes is None:
-            print(f"[MidiController] Unknown chord: {chord_name}")
+            logger.info(f"Unknown chord: {chord_name}")
             return
         self._strum_on(notes, velocity)
         time.sleep(duration)
@@ -393,7 +464,7 @@ class MidiController:
         """Switch instrument by name."""
         program = INSTRUMENTS.get(instrument_name)
         if program is None:
-            print(f"[MidiController] Unknown instrument: {instrument_name}")
+            logger.info(f"Unknown instrument: {instrument_name}")
             return
         if self._fs and self._sfid is not None:
             self._fs.program_select(self._channel, self._sfid, 0, program)
@@ -486,77 +557,11 @@ class MidiController:
 
 
 # ---------------------------------------------------------------------------
-# Standalone demo
+# Library Entry Point
 # ---------------------------------------------------------------------------
 
-def demo():
-    """Quick demo: plays through chords and instruments to verify audio works."""
-    print("=== MIDI Engine Demo ===")
-    print()
-
-    ctrl = MidiController()
-    ctrl.start()
-    time.sleep(0.5)  # Let FluidSynth initialize audio
-
-    # Demo 1: Single notes
-    print("Playing C4 (middle C)...")
-    ctrl.play_note(60, velocity=100, duration=0.8)
-    time.sleep(0.3)
-
-    # Demo 2: Chords with different instruments
-    for inst in ["nylon_guitar", "piano", "strings", "electric_guitar"]:
-        print(f"  {inst}: C major chord")
-        ctrl.set_instrument(inst)
-        ctrl.play_chord("C", velocity=90, duration=0.8)
-        time.sleep(0.3)
-
-    # Demo 3: Play songs from the playlist/ folder
-    print()
-    print(f"Available songs: {list_songs()}")
-    print()
-
-    # Play the verse of Save Your Tears
-    verse = get_song_progression("save_your_tears", section="verse")
-    if verse:
-        print(f"Save Your Tears (verse): {verse}")
-        ctrl.set_instrument("nylon_guitar")
-        for chord in verse:
-            print(f"  {chord}")
-            ctrl.play_chord(chord, velocity=85, duration=0.7)
-            time.sleep(0.2)
-
-    # Play the verse of Careless Whisper
-    verse = get_song_progression("careless_whisper", section="verse")
-    if verse:
-        print()
-        print(f"Careless Whisper (verse): {verse}")
-        ctrl.set_instrument("piano")
-        for chord in verse:
-            print(f"  {chord}")
-            ctrl.play_chord(chord, velocity=80, duration=0.9)
-            time.sleep(0.2)
-
-    # Demo 4: Simulate classifier output
-    print()
-    print("Simulating classifier input (on_classification)...")
-    gestures = [
-        ("palm_up_out", "fist_down_out", 0.8),   # C chord, piano
-        ("palm_up_out", "fist_down_out", 0.8),   # same (debounce frame 2)
-        ("palm_up_out", "fist_down_out", 0.8),   # same (debounce frame 3 -> triggers)
-        ("palm_down_out", "fist_down_out", 0.6),  # Am chord
-        ("palm_down_out", "fist_down_out", 0.6),
-        ("palm_down_out", "fist_down_out", 0.6),
-        ("arm_down", None, 0.0),                   # rest -> silence
-    ]
-    for rh, lh, amp in gestures:
-        ctrl.on_classification(right_hand=rh, left_hand=lh, amplitude=amp)
-        time.sleep(0.4)
-
-    time.sleep(1.0)
-    ctrl.stop()
-    print()
-    print("Demo complete!")
-
-
 if __name__ == "__main__":
-    demo()
+    print("MIDI Engine - Core Library")
+    print("Use 'make music' to run the demo sequence.")
+
+
