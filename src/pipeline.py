@@ -1,3 +1,5 @@
+import math
+
 import pandas as pd
 import numpy as np
 
@@ -130,13 +132,13 @@ def batch_pipeline(csv_dictionary: dict, fs, window_size, overlap, standardize=F
 
     return df_batch[feature_cols], df_batch[label_col]
 
-def train_classifier(X, y):
+def train_classifier(X, y, n_estimators):
     """
     Train the random forest classifier and save the classifier.
     """
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=.2, random_state=42)
 
-    clf = RandomForestClassifier(n_estimators=100, random_state=42)
+    clf = RandomForestClassifier(n_estimators=n_estimators, random_state=42)
     clf.fit(X_train, y_train)
 
     path = '../models/classifier.pkl'
@@ -195,7 +197,8 @@ def main():
     X_batch, y_batch = batch_pipeline(csv_dict, 250, 250, 0.5, True)
 
     # Train based on CSV data, get out the test X and Y data from the test train split as well as the path the model was saved to
-    X_test, y_test, path = train_classifier(X_batch, y_batch)
+    # You can toy with the n_estimators parameter a bit
+    X_test, y_test, path = train_classifier(X_batch, y_batch, math.floor(math.sqrt(X_batch.shape[1])))
 
     # Run the classifier on input data.  Path is to where the model is saved
     # If you don't have the real labels to run against, pass in "None" for y and set print_stats=False (default)
