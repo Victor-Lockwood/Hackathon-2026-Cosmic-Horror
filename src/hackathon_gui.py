@@ -35,6 +35,17 @@ from datetime import datetime
 
 import numpy as np
 
+# Music integration
+try:
+    from .cosmic_ritual import CosmicRitual
+    HAS_RITUAL = True
+except ImportError:
+    try:
+        from cosmic_ritual import CosmicRitual
+        HAS_RITUAL = True
+    except ImportError:
+        HAS_RITUAL = False
+
 # GUI imports
 try:
     from PyQt6.QtWidgets import (
@@ -431,6 +442,7 @@ class MockSource(DataSource):
                     enabled=(i < n_channels),
                 )
             )
+        self.lsl_outlet = None
         self._sync_from_channels()
 
     # ------------------------------------------------------------------
@@ -443,6 +455,44 @@ class MockSource(DataSource):
     def refresh_config(self):
         """Re-sync public state after channel or sample-rate changes."""
         self._sync_from_channels()
+
+    def enable_lsl_output(self):
+        """Create an LSL outlet for mock data."""
+        if not HAS_LSL:
+            return
+        
+        # We need a stand-in for DeviceConfig that has enabled_biopotential and name
+        @dataclass
+        class MockConfig:
+            name: str
+            sample_rate: int
+            enabled_biopotential: List[MockChannelConfig]
+
+        config = MockConfig(
+            name="Mock",
+            sample_rate=self.sample_rate,
+            enabled_biopotential=[mc for mc in self.mock_channels if mc.enabled]
+        )
+        
+        # We can't easily use bioradio.create_lsl_outlet because it expects a real DeviceConfig
+        # and might have imports/types we don't want to mess with.
+        # Let's just create it directly here.
+        info = pylsl.StreamInfo(
+            name="BioRadio", # Consistent name for ritual to find
+            type="EMG",
+            channel_count=self.n_channels,
+            nominal_srate=self.sample_rate,
+            channel_format="float32",
+            source_id="bioradio_mock"
+        )
+        chns = info.desc().append_child("channels")
+        for mc in config.enabled_biopotential:
+            c = chns.append_child("channel")
+            c.append_child_value("label", mc.name)
+            c.append_child_value("unit", "microvolts")
+            c.append_child_value("type", "EMG")
+        
+        self.lsl_outlet = pylsl.StreamOutlet(info)
 
     # ------------------------------------------------------------------
     def connect(self):
@@ -513,12 +563,19 @@ class MockSource(DataSource):
 
             self._t += chunk_size * dt
             self._emit_data(samples, timestamps)
+            
+            # Push to LSL if outlet exists
+            if self.lsl_outlet:
+                for s in range(chunk_size):
+                    self.lsl_outlet.push_sample(samples[s].tolist())
+
             time.sleep(chunk_size / self.sample_rate)
 
     def stop(self):
         self.running = False
         if self._thread:
             self._thread.join(timeout=2.0)
+        self.lsl_outlet = None
 
 
 # =====================================================================
@@ -642,6 +699,10 @@ if HAS_GUI:
             self.last_sample_count = 0
             self.last_rate_time = time.time()
 
+            # Music Mode state
+            self.ritual: Optional[CosmicRitual] = None
+            self.ritual_thread: Optional[threading.Thread] = None
+
             self.channel_checks: List[QCheckBox] = []
             self.channel_type_combos: List[QComboBox] = []
 
@@ -758,6 +819,22 @@ if HAS_GUI:
             stream_layout.addWidget(self.lsl_output_check, 1, 0, 1, 2)
 
             left_layout.addWidget(stream_group)
+
+            # -- Music Mode --
+            music_group = QGroupBox("Music Mode")
+            music_layout = QVBoxLayout(music_group)
+
+            self.music_mode_check = QCheckBox("Enable Cosmic Ritual")
+            self.music_mode_check.setStyleSheet("font-weight: bold; color: #9d27b0;")
+            self.music_mode_check.setEnabled(False)
+            self.music_mode_check.stateChanged.connect(self.toggle_music_mode)
+            music_layout.addWidget(self.music_mode_check)
+
+            self.music_status_label = QLabel("Wait for acquisition...")
+            self.music_status_label.setStyleSheet("font-size: 10px; color: #888;")
+            music_layout.addWidget(self.music_status_label)
+
+            left_layout.addWidget(music_group)
 
             # -- Recording --
             record_group = QGroupBox("Data Recording")
@@ -1465,9 +1542,9 @@ if HAS_GUI:
 
             try:
                 # Enable LSL output if checked
-                if (self.lsl_output_check.isChecked() and
-                        isinstance(self.source, BioRadioSource)):
-                    self.source.enable_lsl_output()
+                if self.lsl_output_check.isChecked():
+                    if isinstance(self.source, (BioRadioSource, MockSource)):
+                        self.source.enable_lsl_output()
 
                 self.source.start()
                 self.sample_count = 0
@@ -1485,6 +1562,8 @@ if HAS_GUI:
                     QPushButton:hover { background-color: #a00000; }
                 """)
                 self.record_btn.setEnabled(True)
+                self.music_mode_check.setEnabled(True)
+                self.music_status_label.setText("Ready to ritual")
                 self.log("Acquisition started")
 
             except Exception as e:
@@ -1493,6 +1572,9 @@ if HAS_GUI:
         def stop_acquisition(self):
             if self.recording:
                 self.toggle_recording()
+
+            if self.music_mode_check.isChecked():
+                self.music_mode_check.setChecked(False)
 
             self.timer.stop()
 
@@ -1509,7 +1591,93 @@ if HAS_GUI:
                 QPushButton:disabled { background-color: #555; }
             """)
             self.record_btn.setEnabled(False)
+            self.music_mode_check.setEnabled(False)
+            self.music_status_label.setText("Wait for acquisition...")
             self.log("Acquisition stopped")
+
+        def toggle_music_mode(self, state):
+            if not HAS_RITUAL:
+                QMessageBox.critical(self, "Error", "cosmic_ritual.py not found!")
+                self.music_mode_check.setChecked(False)
+                return
+
+            if bool(state):
+                self.start_ritual()
+            else:
+                self.stop_ritual()
+
+        def start_ritual(self):
+            # Ensure LSL output is active — the ritual needs an LSL stream to consume
+            if not self.lsl_output_check.isChecked():
+                self.lsl_output_check.setChecked(True)
+                if isinstance(self.source, (BioRadioSource, MockSource)) and not getattr(self.source, 'lsl_outlet', None):
+                    self.source.enable_lsl_output()
+                self.log("Music Mode: Auto-enabled LSL output")
+
+            # Try to determine LSL stream name
+            stream_name = "BioRadio"
+            if isinstance(self.source, BioRadioSource) and self.source.radio:
+                stream_name = f"BioRadio_{self.source.radio.device_name}"
+            elif isinstance(self.source, LSLSource):
+                stream_name = self.source.stream_name
+            elif isinstance(self.source, MockSource):
+                stream_name = "BioRadio"
+
+            try:
+                self.ritual = CosmicRitual(
+                    stream_name=stream_name,
+                    status_callback=self._on_ritual_status,
+                )
+                self.ritual.running = True  # allow cancellation during setup
+                self.music_status_label.setText("Starting ritual...")
+                self.ritual_thread = threading.Thread(target=self._run_ritual, daemon=True)
+                self.ritual_thread.start()
+                self.log(f"Music Mode: Connecting to '{stream_name}'...")
+            except Exception as e:
+                self.log(f"Ritual error: {e}")
+                self.music_mode_check.setChecked(False)
+
+        def _on_ritual_status(self, msg):
+            """Called from the ritual thread with status updates."""
+            # Schedule GUI update on the main thread
+            QTimer.singleShot(0, lambda: self._apply_ritual_status(msg))
+
+        def _apply_ritual_status(self, msg):
+            """Apply a ritual status message on the GUI thread."""
+            if not self.ritual:
+                return
+            self.music_status_label.setText(msg)
+            self.log(f"Music: {msg}")
+
+        def _run_ritual(self):
+            try:
+                self.ritual.setup()
+                QTimer.singleShot(0, lambda: self.music_status_label.setText("Ritual active"))
+                self.ritual.run()
+            except Exception as e:
+                error_msg = str(e)
+                logger.error(f"Ritual thread error: {e}")
+                QTimer.singleShot(0, lambda: self._on_ritual_failed(error_msg))
+
+        def _on_ritual_failed(self, error_msg):
+            """Handle ritual setup/run failure on the GUI thread."""
+            self.music_status_label.setText(f"Ritual failed")
+            self.log(f"Music Mode failed: {error_msg}")
+            self.music_mode_check.setChecked(False)
+            self.ritual = None
+
+        def stop_ritual(self):
+            if self.ritual:
+                self.ritual.running = False
+                if self.ritual.midi:
+                    self.ritual.midi.stop()
+            # Wait for the ritual thread to finish (100ms LSL timeout + margin)
+            if self.ritual_thread and self.ritual_thread.is_alive():
+                self.ritual_thread.join(timeout=0.5)
+            self.ritual = None
+            self.ritual_thread = None
+            self.music_status_label.setText("Ritual stopped")
+            self.log("Music Mode: Stopped")
 
         def _on_data_received(self, samples: np.ndarray, timestamps: np.ndarray):
             """Called from data source thread."""

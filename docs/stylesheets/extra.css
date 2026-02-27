@@ -1,0 +1,347 @@
+/* ===== Cosmic Horror Custom Theme ===== */
+
+/* --- 1. Variables & Core Palette --- */
+:root {
+  --void-bg: #0a0a15;
+  --void-bg-darker: #05050a;
+  --eldritch-purple: #9d27b0;
+  --eldritch-purple-glow: rgba(157, 39, 176, 0.4);
+  --necrotic-green: #00ffa2;
+  --necrotic-green-glow: rgba(0, 255, 162, 0.3);
+  --starry-white: #e0e0ff;
+  --dim-void: #b0b0d0;
+}
+
+/* --- 2. Animations (The Eldritch Rites) --- */
+
+/* Simulates a biological rhythmic pulse for focal icons */
+@keyframes heartbeat {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 5px var(--eldritch-purple-glow)); }
+  10%, 30% { transform: scale(1.1); filter: drop-shadow(0 0 15px var(--eldritch-purple)); }
+  20% { transform: scale(1.2); filter: drop-shadow(0 0-25px var(--eldritch-purple)); }
+}
+
+@keyframes flicker {
+  0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% { opacity: 1; filter: drop-shadow(0 0 5px var(--eldritch-purple-glow)); }
+  20%, 24%, 55% { opacity: 0.5; filter: none; }
+}
+
+@keyframes glitch {
+  0% { transform: translate(0); text-shadow: -2px 0 var(--necrotic-green), 2px 0 var(--eldritch-purple); }
+  2% { transform: translate(2px, -1px); text-shadow: 2px 0 var(--necrotic-green), -2px 0 var(--eldritch-purple); }
+  4% { transform: translate(-2px, 1px); text-shadow: -2px 0 var(--necrotic-green), 2px 0 var(--eldritch-purple); }
+  6% { transform: translate(0); }
+  100% { transform: translate(0); }
+}
+
+/* Creates periodic visual "gaps" to simulate a decaying UI */
+@keyframes void-blink {
+  0%, 98%, 100% { visibility: visible; }
+  99% { visibility: hidden; }
+}
+
+@keyframes blinding-pulse {
+  0%, 100% { background-color: #ffffff; }
+  50% { background-color: #fff9c4; }
+  99.5% { background-color: #ffeb3b; }
+}
+
+@keyframes flashbang {
+  0% { filter: brightness(10) contrast(2); }
+  100% { filter: brightness(1) contrast(1); }
+}
+
+@keyframes jitter {
+  0%, 100% { transform: translate(0); }
+  10% { transform: translate(-1px, -1px) rotate(-1deg); }
+  20% { transform: translate(1px, 1px) rotate(1deg); }
+  30% { transform: translate(-1px, 1px) rotate(-1deg); }
+  40% { transform: translate(1px, -1px) rotate(1deg); }
+}
+
+@keyframes vibrate {
+  0% { transform: translate(0,0); }
+  25% { transform: translate(1px, 1px); }
+  50% { transform: translate(-1px, -1px); }
+  75% { transform: translate(1px, -1px); }
+  100% { transform: translate(-1px, 1px); }
+}
+
+@keyframes unstable {
+  0%, 90%, 100% { transform: rotate(0deg); }
+  92% { transform: rotate(0.5deg) scale(1.01); }
+  95% { transform: rotate(-0.5deg) scale(0.99); }
+}
+
+/* --- 3. Base Layout & Shared Components --- */
+
+html { scroll-behavior: smooth; }
+
+.md-typeset .hero {
+  text-align: center;
+  padding: 4rem 0 2rem;
+  border-radius: 50%;
+}
+
+.md-typeset .hero h1 {
+  font-size: 3.5rem;
+  font-weight: 900;
+  letter-spacing: -1px;
+  margin-bottom: 0.5rem;
+}
+
+.md-typeset .hero h1 .md-icon {
+  display: inline-block;
+  animation: heartbeat 4s ease-in-out infinite;
+}
+
+.md-typeset .hero .hero-subtitle {
+  font-size: 1.4rem;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  opacity: 0.9;
+  margin-bottom: 2rem;
+}
+
+/* --- 4. The Safe Void (Dark Mode) --- */
+
+[data-md-color-scheme="slate"], :root {
+  --md-primary-fg-color:        var(--eldritch-purple);
+  --md-primary-fg-color--light: #d05ce3;
+  --md-primary-fg-color--dark:  #6a0080;
+  --md-accent-fg-color:         var(--necrotic-green);
+  --md-default-bg-color:        var(--void-bg);
+  --md-default-bg-color--light: var(--void-bg-darker);
+  --md-default-fg-color:        var(--starry-white);
+  --md-default-fg-color--light: var(--dim-void);
+  --md-footer-bg-color:         var(--void-bg-darker);
+}
+
+/* High-atmospheric nebula effect for the default theme */
+[data-md-color-scheme="slate"] body {
+  background: 
+    radial-gradient(circle at 20% 30%, rgba(60, 0, 100, 0.15) 0%, transparent 40%),
+    radial-gradient(circle at 80% 70%, rgba(0, 80, 80, 0.1) 0%, transparent 40%),
+    var(--void-bg);
+  background-attachment: fixed;
+}
+
+[data-md-color-scheme="slate"] .md-header {
+  background-color: rgba(5, 5, 15, 0.9) !important;
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--eldritch-purple-glow);
+}
+
+[data-md-color-scheme="slate"] .md-header__button {
+  color: var(--necrotic-green) !important;
+  transition: all 0.3s ease;
+}
+
+[data-md-color-scheme="slate"] .md-header__button:hover {
+  background-color: var(--eldritch-purple-glow);
+  color: var(--starry-white) !important;
+  box-shadow: 0 0 15px var(--necrotic-green-glow);
+}
+
+[data-md-color-scheme="slate"] .md-typeset .hero {
+  background: radial-gradient(circle, var(--eldritch-purple-glow) 0%, transparent 70%);
+}
+
+[data-md-color-scheme="slate"] .md-typeset .hero h1 {
+  color: var(--starry-white);
+  text-shadow: 0 0 20px var(--eldritch-purple);
+}
+
+[data-md-color-scheme="slate"] .md-typeset .hero .hero-subtitle {
+  color: var(--necrotic-green);
+  text-shadow: 0 0 10px var(--necrotic-green-glow);
+}
+
+[data-md-color-scheme="slate"] .md-typeset .hero .hero-buttons .md-button--primary {
+  background-color: var(--eldritch-purple);
+  border-color: var(--eldritch-purple);
+  box-shadow: 0 0 15px var(--eldritch-purple-glow);
+}
+
+[data-md-color-scheme="slate"] .md-typeset .hero .hero-buttons .md-button--primary:hover {
+  background-color: var(--necrotic-green);
+  border-color: var(--necrotic-green);
+  color: var(--void-bg-darker);
+  box-shadow: 0 0 25px var(--necrotic-green-glow);
+}
+
+[data-md-color-scheme="slate"] .grid.cards > ul > li {
+  background: rgba(20, 20, 40, 0.6);
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(157, 39, 176, 0.2);
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+[data-md-color-scheme="slate"] .grid.cards > ul > li:hover {
+  border-color: var(--necrotic-green);
+  box-shadow: 0 10px 30px rgba(0, 255, 162, 0.15);
+  transform: scale(1.03);
+  background: rgba(30, 30, 60, 0.8);
+}
+
+[data-md-color-scheme="slate"] .md-typeset code {
+  background-color: #1a1a2e;
+  color: var(--necrotic-green);
+}
+
+/* --- 5. The Blinding Truth (Light Mode) --- */
+
+[data-md-color-scheme="default"] {
+  --md-default-bg-color:        #ffffff !important;
+  --md-primary-fg-color:        #ffff00;
+  --md-accent-fg-color:         #ff0000;
+  --md-default-fg-color:        #000000;
+  cursor: crosshair;
+}
+
+[data-md-color-scheme="default"] body {
+  background: #ffffff !important;
+  animation: flashbang 0.5s ease-out, blinding-pulse 10s linear infinite;
+  /* SVG noise filter adds to the visual discomfort and "static" feel */
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  background-blend-mode: overlay;
+}
+
+[data-md-color-scheme="default"] .md-header {
+  background-color: var(--md-primary-fg-color) !important;
+  color: #000 !important;
+}
+
+[data-md-color-scheme="default"] .md-header__button {
+  color: #000 !important;
+}
+
+/* The Burning Eye — light mode hero gets a bloodshot eye shape */
+[data-md-color-scheme="default"] .md-typeset .hero {
+  background:
+    radial-gradient(circle 40px at 50% 45%, #1a0000 0%, transparent 100%),
+    radial-gradient(circle 80px at 50% 45%, rgba(180, 0, 0, 0.7) 0%, transparent 100%),
+    radial-gradient(ellipse 55% 40% at 50% 45%, rgba(255, 23, 68, 0.5) 0%, rgba(255, 0, 0, 0.2) 50%, transparent 75%),
+    radial-gradient(ellipse 70% 55% at 50% 45%, rgba(255, 200, 200, 0.3) 0%, transparent 80%);
+}
+
+/* Semantic replacements for the landing page in light mode */
+[data-md-color-scheme="default"] .md-typeset .hero h1 {
+  font-size: 0 !important;
+  margin-bottom: 0.5rem;
+}
+
+[data-md-color-scheme="default"] .md-typeset .hero h1::after {
+  content: "THE EYE IS OPEN";
+  font-size: 3.5rem;
+  display: block;
+  font-weight: 900;
+  animation: glitch 0.2s infinite;
+  color: #ff1744 !important;
+}
+
+[data-md-color-scheme="default"] .md-typeset .hero .hero-subtitle {
+  font-size: 0 !important;
+  margin-bottom: 2rem;
+}
+
+[data-md-color-scheme="default"] .md-typeset .hero .hero-subtitle::after {
+  content: "THE LIGHT PROVIDES NO SHELTER. THEY CAN SEE YOU NOW.";
+  font-size: 1.4rem;
+  display: block;
+  color: #000;
+  font-weight: bold;
+}
+
+[data-md-color-scheme="default"] .md-typeset h1,
+[data-md-color-scheme="default"] .md-typeset h2,
+[data-md-color-scheme="default"] .md-typeset h3 {
+  animation: glitch 0.3s cubic-bezier(.25,.46,.45,.94) both infinite;
+  color: #ff0000 !important;
+}
+
+[data-md-color-scheme="default"] .md-typeset p,
+[data-md-color-scheme="default"] .md-typeset .highlight,
+[data-md-color-scheme="default"] .md-typeset code,
+[data-md-color-scheme="default"] table {
+  animation: void-blink 4s step-end infinite;
+}
+
+[data-md-color-scheme="default"] .mermaid {
+  animation: unstable 3s ease-in-out infinite;
+}
+
+[data-md-color-scheme="default"] .md-button:hover {
+  animation: jitter 0.2s linear infinite;
+}
+
+/* Brutalist UI style: intentional high contrast and heavy borders to increase user friction */
+[data-md-color-scheme="default"] .grid.cards > ul > li {
+  background: #fff;
+  border: 5px solid #000;
+  box-shadow: 10px 10px 0 #000;
+  transition: none;
+}
+
+[data-md-color-scheme="default"] .grid.cards > ul > li:hover {
+  background: #ffff00;
+  transform: translate(-5px, -5px);
+  box-shadow: 15px 15px 0 #ff0000;
+  animation: vibrate 0.05s linear infinite;
+}
+
+[data-md-color-scheme="default"] .md-typeset .highlight,
+[data-md-color-scheme="default"] .md-typeset code {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 5px solid #000 !important;
+  box-shadow: 10px 10px 0 #ff0000 !important;
+}
+
+/* Overrides standard syntax highlighting with a single, aggressive hue for light mode hostility */
+[data-md-color-scheme="default"] .md-typeset .highlight span {
+  color: #ff0000 !important;
+  text-shadow: none !important;
+}
+
+/* --- 6. Global Utility Overrides --- */
+
+.md-typeset .highlight {
+  border: 1px solid var(--eldritch-purple-glow);
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+.mermaid svg {
+  filter: drop-shadow(0 0 5px var(--eldritch-purple-glow));
+  max-width: 100%;
+}
+
+/* Give mermaid diagrams breathing room and prevent SVG clipping */
+.md-typeset .mermaid {
+  padding: 1rem 0;
+  overflow: visible;
+}
+
+.md-typeset .mermaid svg {
+  overflow: visible !important;
+}
+
+/* Mermaid edge labels need to be visible in dark mode */
+[data-md-color-scheme="slate"] .mermaid .edgeLabel {
+  background-color: var(--void-bg) !important;
+  color: var(--necrotic-green) !important;
+}
+
+[data-md-color-scheme="slate"] .mermaid .edgeLabel p {
+  color: var(--necrotic-green) !important;
+}
+
+/* Subgraph title text */
+[data-md-color-scheme="slate"] .mermaid .cluster-label span {
+  color: var(--starry-white) !important;
+}
+
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--void-bg-darker); }
+::-webkit-scrollbar-thumb { background: var(--eldritch-purple); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--necrotic-green); }

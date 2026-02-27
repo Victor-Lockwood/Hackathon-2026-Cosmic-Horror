@@ -1,0 +1,16 @@
+{
+    "title": "Blinding Lights",
+    "artist": "The Weeknd",
+    "bpm": 171,
+    "note": "Simplified from Fm key. Original is Fm-Cm-Eb-Bb.",
+    "sections": {
+        "verse":  ["Dm", "Am", "C", "G"],
+        "chorus": ["Dm", "Am", "C", "G"]
+    },
+    "full_structure": [
+        "verse", "verse",
+        "chorus",
+        "verse",
+        "chorus", "chorus"
+    ]
+}

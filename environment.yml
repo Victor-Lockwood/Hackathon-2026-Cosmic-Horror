@@ -36,3 +36,4 @@ dependencies:
   - pip:
     - pylsl
     - neurokit2>=0.2
+    - pyfluidsynth>=1.3

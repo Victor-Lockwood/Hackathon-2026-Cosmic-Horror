@@ -1,0 +1,15 @@
+{
+    "title": "Careless Whisper",
+    "artist": "George Michael",
+    "bpm": 76,
+    "sections": {
+        "verse":  ["Am", "D", "F", "Em"],
+        "chorus": ["Am", "D", "F", "Em"]
+    },
+    "full_structure": [
+        "verse", "verse",
+        "chorus",
+        "verse",
+        "chorus", "chorus"
+    ]
+}

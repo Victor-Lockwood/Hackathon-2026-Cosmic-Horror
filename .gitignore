@@ -35,3 +35,6 @@ recordings/
 
 # Logs
 *.log
+
+# Docs website
+site/
