@@ -132,7 +132,7 @@ def batch_pipeline(csv_dictionary: dict, fs, window_size, overlap, standardize=F
 
 def train_classifier(X, y):
     """
-    Train the random forest classifier.
+    Train the random forest classifier and save the classifier.
     """
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=.2, random_state=42)
 
@@ -147,12 +147,21 @@ def train_classifier(X, y):
     return X_test, y_test, path
 
 
-def run_classifier(X, y, classifier_path):
+def run_classifier(X, y, classifier_path, print_stats=True):
+    """
+    Run the classifier on the input data.  If true labels aren't known, pass in None for y.
+    """
     with open(classifier_path, 'rb') as file:
         clf = pickle.load(file)
 
     y_pred = clf.predict(X)
-    print(classification_report(y, y_pred))
+
+    if print_stats:
+        if y is None:
+            print("No labels to compare against.")
+            return
+
+        print(classification_report(y, y_pred))
 
 def main():
 
@@ -169,10 +178,15 @@ def main():
         "peace_out": "../data/Cosmic_Horror/peace out_20260226_201518.csv"
     }
 
+    # Feed in the CSVs for training
     X_batch, y_batch = batch_pipeline(csv_dict, 250, 250, 0.5, True)
+
+    # Train based on CSV data, get out the test X and Y data from the test train split as well as the path the model was saved to
     X_test, y_test, path = train_classifier(X_batch, y_batch)
 
-    run_classifier(X_test, y_test, path)
+    # Run the classifier on input data.  Path is to where the model is saved
+    # If you don't have the real labels to run against, pass in "None" for y and set print_stats=False (default)
+    run_classifier(X_test, y_test, path, print_stats=True)
 
 
 if __name__ == "__main__":
