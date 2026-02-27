@@ -147,12 +147,19 @@ def train_classifier(X, y):
     return X_test, y_test, path
 
 
-def run_classifier(X, y, classifier_path, print_stats=True):
+def load_classifier(path):
+    with open(path, 'rb') as file:
+        clf = pickle.load(file)
+
+    return clf
+
+
+def run_classifier(X, y, classifier_path, print_stats=True, clf=None):
     """
     Run the classifier on the input data.  If true labels aren't known, pass in None for y.
     """
-    with open(classifier_path, 'rb') as file:
-        clf = pickle.load(file)
+    if clf is None:
+        clf = load_classifier(classifier_path)
 
     y_pred = clf.predict(X)
 
@@ -186,7 +193,9 @@ def main():
 
     # Run the classifier on input data.  Path is to where the model is saved
     # If you don't have the real labels to run against, pass in "None" for y and set print_stats=False (default)
-    run_classifier(X_test, y_test, path, print_stats=True)
+    clf = load_classifier(path)
+    run_classifier(X_test, y_test, print_stats=True, clf=clf)
+
 
 
 if __name__ == "__main__":
