@@ -8,8 +8,11 @@ file, sound comes out.
 
 ```
 Classifier output ──► MidiController ──► FluidSynth ──► Speakers
-                      (thread-safe)     (wasapi driver)
+                      (thread-safe)     (multiple drivers)
 ```
+
+The engine is highly portable on Windows, automatically attempting to initialize
+using **WASAPI** (preferred for low latency), **DirectSound**, or **WaveOut**.
 
 ---
 
@@ -83,6 +86,9 @@ See the [Playlist](playlist.md) page for all available songs.
 | `strum_delay_ms` | 15 | Delay between notes in a chord (guitar strum effect). Set to 0 for block chords. |
 | `debounce_frames` | 3 | Consecutive same-gesture frames required before triggering. Increase if classifier is noisy. |
 | `gain` | 0.8 | Master volume (0.0 to 1.0+). |
+
+!!! note "Velocity Mapping"
+    EMG amplitude (0.0 to 1.0) is linearly mapped to MIDI velocity values between **40 and 127**. This ensures even soft gestures produce audible sound while allowing for dynamic expression.
 
 ```python
 controller = MidiController(strum_delay_ms=25, debounce_frames=5, gain=1.0)
