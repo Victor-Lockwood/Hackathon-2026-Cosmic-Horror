@@ -2,6 +2,7 @@ import math
 
 import pandas as pd
 import numpy as np
+import re
 
 from scipy.signal import butter, filtfilt, iirnotch
 
@@ -118,11 +119,12 @@ def batch_pipeline(csv_dictionary: dict, fs, window_size, overlap, standardize=F
     df_batch = pd.DataFrame()
 
     for key, val in csv_dictionary.items():
-        csv_df = pipeline(val, fs, window_size, overlap, key)
+        result = re.sub(r'[^a-zA-Z]+', '', key)
+        csv_df = pipeline(val, fs, window_size, overlap, result)
         df_batch = pd.concat([df_batch, csv_df])
 
-    feature_cols = df_batch.columns[:-1]
-    label_col = df_batch.columns[-1]
+    label_col = 'label'
+    feature_cols = [col for col in df_batch.columns if col != label_col and col != 'timestamp']
 
     if standardize:
         scaler = StandardScaler()
@@ -189,7 +191,7 @@ def main():
     # Change these to point at training data CSVs
     # the keys are the labels
     csv_dict = {
-        "arm_down": "../data/Cosmic_Horror/arm down_20260226_201414.csv",
+        "arm_down_01": "../data/Grant/armdown_01_20260227_143904.csv",
         "arm_up": "../data/Cosmic_Horror/arm up side palm down_20260226_201448.csv",
         "fist_down_out": "../data/Cosmic_Horror/fist-down-out_20260226_201320.csv",
         "fist_down_up": "../data/Cosmic_Horror/fist-down-up_20260226_201341.csv",
@@ -197,6 +199,84 @@ def main():
         "palm_down_up": "../data/Cosmic_Horror/palm-down-up_20260226_201238.csv",
         "palm_up_out": "../data/Cosmic_Horror/palm-up-out_20260226_200912.csv",
         "peace_out": "../data/Cosmic_Horror/peace out_20260226_201518.csv"
+    }
+
+    cvs_dict = {
+        "armdown_01": "../data/Grant/armdown_01_20260227_143904.csv",
+        "armdown_02": "../data/Grant/armdown_02_20260227_143914.csv",
+        "armdown_03": "../data/Grant/armdown_03_20260227_143923.csv",
+        "armdown_04": "../data/Grant/armdown_04_20260227_143932.csv",
+        "armdown_05": "../data/Grant/armdown_05_20260227_143943.csv",
+        "armdown_06": "../data/Grant/armdown_06_20260227_143953.csv",
+        "armdown_07": "../data/Grant/armdown_07_20260227_144003.csv",
+        "armdown_08": "../data/Grant/armdown_08_20260227_144013.csv",
+        "armdown_09": "../data/Grant/armdown_09_20260227_144022.csv",
+        "armdown_10": "../data/Grant/armdown_10_20260227_144041.csv",
+        "armdown_11": "../data/Grant/armdown_11_20260227_152953.csv",
+        "armdown_12": "../data/Grant/armdown_12_20260227_153025.csv",
+        "armdown_13": "../data/Grant/armdown_13_20260227_153048.csv",
+        "armdown_14": "../data/Grant/armdown_14_20260227_153110.csv",
+        "armdown_15": "../data/Grant/armdown_15_20260227_153142.csv",
+        "baseline_01": "../data/Grant/baseline_01_20260227_143554.csv",
+        "baseline_02": "../data/Grant/baseline_02_20260227_143614.csv",
+        "baseline_03": "../data/Grant/baseline_03_20260227_143629.csv",
+        "baseline_04": "../data/Grant/baseline_04_20260227_143727.csv",
+        "baseline_05": "../data/Grant/baseline_05_20260227_143736.csv",
+        "baseline_06": "../data/Grant/baseline_06_20260227_143746.csv",
+        "baseline_07": "../data/Grant/baseline_07_20260227_143756.csv",
+        "baseline_08": "../data/Grant/baseline_08_20260227_143806.csv",
+        "baseline_09": "../data/Grant/baseline_09_20260227_143816.csv",
+        "baseline_10": "../data/Grant/baseline_10_20260227_143829.csv",
+        "baseline_11": "../data/Grant/baseline_11_20260227_153340.csv",
+        "baseline_12": "../data/Grant/baseline_12_20260227_153404.csv",
+        "baseline_13": "../data/Grant/baseline_13_20260227_153423.csv",
+        "baseline_14": "../data/Grant/baseline_14_20260227_153439.csv",
+        "baseline_15": "../data/Grant/baseline_15_20260227_153454.csv",
+        "superman_01": "../data/Grant/superman_01_20260227_144517.csv",
+        "superman_02": "../data/Grant/superman_02_20260227_144526.csv",
+        "superman_03": "../data/Grant/superman_03_20260227_144537.csv",
+        "superman_04": "../data/Grant/superman_04_20260227_144546.csv",
+        "superman_05": "../data/Grant/superman_05_20260227_144612.csv",
+        "superman_06": "../data/Grant/superman_06_20260227_144622.csv",
+        "superman_07": "../data/Grant/superman_07_20260227_144631.csv",
+        "superman_08": "../data/Grant/superman_08_20260227_144641.csv",
+        "superman_09": "../data/Grant/superman_09_20260227_144730.csv",
+        "superman_10": "../data/Grant/superman_10_20260227_144741.csv",
+        "superman_11": "../data/Grant/superman_11_20260227_154841.csv",
+        "superman_12": "../data/Grant/superman_12_20260227_154815.csv",
+        "superman_13": "../data/Grant/superman_13_20260227_154726.csv",
+        "superman_14": "../data/Grant/superman_14_20260227_153937.csv",
+        "superman_15": "../data/Grant/superman_15_20260227_153525.csv",
+        "uppercut_01": "../data/Grant/uppercut_01_20260227_144815.csv",
+        "uppercut_02": "../data/Grant/uppercut_02_20260227_144825.csv",
+        "uppercut_03": "../data/Grant/uppercut_03_20260227_144909.csv",
+        "uppercut_04": "../data/Grant/uppercut_04_20260227_144845.csv",
+        "uppercut_05": "../data/Grant/uppercut_05_20260227_144918.csv",
+        "uppercut_06": "../data/Grant/uppercut_06_20260227_145049.csv",
+        "uppercut_07": "../data/Grant/uppercut_07_20260227_145131.csv",
+        "uppercut_08": "../data/Grant/uppercut_08_20260227_145151.csv",
+        "uppercut_09": "../data/Grant/uppercut_09_20260227_145201.csv",
+        "uppercut_10": "../data/Grant/uppercut_10_20260227_145212.csv",
+        "uppercut_11": "../data/Grant/uppercut_11_20260227_155140.csv",
+        "uppercut_12": "../data/Grant/uppercut_12_20260227_155453.csv",
+        "uppercut_13": "../data/Grant/uppercut_13_20260227_155527.csv",
+        "uppercut_14": "../data/Grant/uppercut_14_20260227_155548.csv",
+        "uppercut_15": "../data/Grant/uppercut_15_20260227_155615.csv",
+        "zombie_01": "../data/Grant/zombie_01_20260227_144247.csv",
+        "zombie_02": "../data/Grant/zombie_02_20260227_144256.csv",
+        "zombie_03": "../data/Grant/zombie_03_20260227_144306.csv",
+        "zombie_04": "../data/Grant/zombie_04_20260227_144316.csv",
+        "zombie_05": "../data/Grant/zombie_05_20260227_144326.csv",
+        "zombie_06": "../data/Grant/zombie_06_20260227_144336.csv",
+        "zombie_07": "../data/Grant/zombie_07_20260227_144345.csv",
+        "zombie_08": "../data/Grant/zombie_08_20260227_144420.csv",
+        "zombie_09": "../data/Grant/zombie_09_20260227_144430.csv",
+        "zombie_10": "../data/Grant/zombie_10_20260227_144440.csv",
+        "zombie_11": "../data/Grant/zombie_11_20260227_154912.csv",
+        "zombie_12": "../data/Grant/zombie_12_20260227_154936.csv",
+        "zombie_13": "../data/Grant/zombie_13_20260227_154956.csv",
+        "zombie_14": "../data/Grant/zombie_14_20260227_155024.csv",
+        "zombie_15": "../data/Grant/zombie_15_20260227_155043.csv"
     }
 
     # Feed in the CSVs for training
