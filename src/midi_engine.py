@@ -5,7 +5,7 @@ Self-contained audio: loads a SoundFont via FluidSynth, renders audio
 directly to the soundcard. No DAW, no external synth, no extra software.
 
 Usage (standalone test):
-    python midi_engine.py
+    make music   (or python src/midi_demo.py)
 
 Usage (from classifier pipeline):
     from midi_engine import MidiController
@@ -91,8 +91,11 @@ with _suppress_stderr():
         HAS_FLUIDSYNTH = False
 
 # ---------------------------------------------------------------------------
-# Chord and instrument mapping
+# Constants & Styling
 # ---------------------------------------------------------------------------
+
+C_CYN = "\033[96m"
+C_RST = "\033[0m"
 
 # Chord voicings as MIDI note numbers.
 # Covers all candidate songs: Save Your Tears, Careless Whisper, Love Story,
@@ -140,6 +143,12 @@ GESTURE_TO_INSTRUMENT = {
     "arm_up":        "nylon_guitar",
     "arm_down":      "nylon_guitar",
 }
+
+# Reverse lookup: chord name -> first gesture that maps to it (O(1) at runtime)
+CHORD_TO_GESTURE = {}
+for _g, _c in GESTURE_TO_CHORD.items():
+    if _c is not None and _c not in CHORD_TO_GESTURE:
+        CHORD_TO_GESTURE[_c] = _g
 
 # ---------------------------------------------------------------------------
 # Playlist loader — reads song JSON files from the playlist/ folder
@@ -246,15 +255,15 @@ class MidiStateMachine:
                 self._pending_count = 0
             return action if action["type"] else None
 
-        # Same chord as currently playing -> sustain (do nothing)
-        if chord_name == self.current_chord_name and self.state == PlayerState.PLAYING:
-            self.state = PlayerState.SUSTAIN
+        # Same chord as currently playing -> sustain (update velocity dynamically)
+        if chord_name == self.current_chord_name and self.state in (PlayerState.PLAYING, PlayerState.SUSTAIN):
+            if self.state == PlayerState.PLAYING:
+                self.state = PlayerState.SUSTAIN
             self._pending_chord = None
             self._pending_count = 0
-            return None
-
-        if chord_name == self.current_chord_name and self.state == PlayerState.SUSTAIN:
-            return None
+            # Return a velocity update so expressiveness is preserved mid-chord
+            return {"type": "velocity_update", "velocity": velocity, "notes": list(self.active_notes),
+                    "chord": chord_name, "instrument": action.get("instrument")}
 
         # New chord -> debounce
         if chord_name == self._pending_chord:
@@ -443,22 +452,40 @@ class MidiController:
         self.state_machine.active_notes = []
         self.state_machine.current_chord_name = None
 
-    def play_chord(self, chord_name, velocity=100, duration=1.0):
-        """Play a chord by name (convenience for testing)."""
+    def play_chord(self, chord_name, velocity=100, duration=1.0, blocking=True):
+        """Play a chord by name (convenience for testing).
+
+        Args:
+            blocking: If True (default), sleeps for duration on the calling
+                      thread. Set to False for non-blocking fire-and-forget
+                      (notes are scheduled off via a timer thread).
+        """
         notes = CHORDS.get(chord_name)
         if notes is None:
             logger.info(f"Unknown chord: {chord_name}")
             return
         self._strum_on(notes, velocity)
-        time.sleep(duration)
-        self._notes_off(notes)
+        if blocking:
+            time.sleep(duration)
+            self._notes_off(notes)
+        else:
+            threading.Timer(duration, self._notes_off, args=(notes,)).start()
 
-    def play_note(self, note, velocity=100, duration=0.5):
-        """Play a single note (convenience for testing)."""
-        if self._fs:
-            self._fs.noteon(self._channel, note, velocity)
+    def play_note(self, note, velocity=100, duration=0.5, blocking=True):
+        """Play a single note (convenience for testing).
+
+        Args:
+            blocking: If True (default), sleeps for duration on the calling
+                      thread. Set to False for non-blocking fire-and-forget.
+        """
+        if not self._fs:
+            return
+        self._fs.noteon(self._channel, note, velocity)
+        if blocking:
             time.sleep(duration)
             self._fs.noteoff(self._channel, note)
+        else:
+            threading.Timer(duration, self._fs.noteoff, args=(self._channel, note)).start()
 
     def set_instrument(self, instrument_name):
         """Switch instrument by name."""
@@ -522,6 +549,10 @@ class MidiController:
                 if self._progression:
                     self._progression_index = (self._progression_index + 1) % len(self._progression)
 
+            elif action["type"] == "velocity_update":
+                # Re-voice active notes at new velocity for real-time expression
+                self._update_velocity(action["notes"], action["velocity"])
+
             elif action["type"] == "stop":
                 self._notes_off(action["notes"])
 
@@ -533,6 +564,14 @@ class MidiController:
             self._fs.noteon(self._channel, note, velocity)
             if self.strum_delay_ms > 0 and note != notes[-1]:
                 time.sleep(self.strum_delay_ms / 1000.0)
+
+    def _update_velocity(self, notes, velocity):
+        """Re-voice active notes at a new velocity for real-time expression."""
+        if not self._fs:
+            return
+        for note in notes:
+            self._fs.noteoff(self._channel, note)
+            self._fs.noteon(self._channel, note, velocity)
 
     def _notes_off(self, notes):
         """Turn off a list of notes."""
@@ -549,11 +588,8 @@ class MidiController:
 
     @staticmethod
     def _chord_to_gesture(chord_name):
-        """Reverse lookup: chord name -> first gesture that maps to it."""
-        for gesture, chord in GESTURE_TO_CHORD.items():
-            if chord == chord_name:
-                return gesture
-        return None
+        """Reverse lookup: chord name -> first gesture that maps to it. O(1)."""
+        return CHORD_TO_GESTURE.get(chord_name)
 
 
 # ---------------------------------------------------------------------------
@@ -561,7 +597,8 @@ class MidiController:
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    print("MIDI Engine - Core Library")
-    print("Use 'make music' to run the demo sequence.")
+    print(f"\n[MidiEngine] Core library loaded.")
+    print(f"To run the audio verification demo, use:")
+    print(f"  {C_CYN}make music{C_RST}  OR  {C_CYN}python src/midi_demo.py{C_RST}\n")
 
 
