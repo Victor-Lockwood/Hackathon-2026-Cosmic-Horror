@@ -36,11 +36,11 @@ flowchart TD
 
 | Stage | File | What it does |
 |-------|------|-------------|
-| **Capture** | `hackathon_gui.py` | Streams raw EMG from BioRadio (or mock data) |
+| **Capture** | `hackathon_gui.py` | Streams raw EMG from BioRadio (serial) or LSL; records CSVs with metadata headers |
 | **Preprocessing** | `pipeline.py` | Bandpass filter (20-450 Hz) + 60 Hz notch filter |
 | **Feature extraction** | `pipeline.py` | Sliding window: RMS, MAV, Variance, Waveform Length, Zero Crossings |
 | **Classification** | `pipeline.py` | RandomForestClassifier trained on 8 gesture classes |
-| **Music synthesis** | `midi_engine.py` | Maps gestures to chords/instruments, renders audio via FluidSynth |
+| **Music synthesis** | `midi_engine.py` | Maps gestures to chords/instruments; renders audio via FluidSynth (WASAPI/DirectSound/WaveOut) |
 
 ---
 
@@ -91,7 +91,7 @@ stateDiagram-v2
     SUSTAIN --> IDLE : arm_down
 ```
 
-The state machine debounces noisy classifier output (default: 3 consecutive frames) and handles chord transitions (note-off before note-on). EMG amplitude maps to MIDI velocity (louder flex = louder note).
+The state machine debounces noisy classifier output (default: 3 consecutive frames) and handles chord transitions by triggering note-off before note-on. EMG amplitude maps to MIDI velocity (linear mapping from 0.0–1.0 to MIDI values 40–127). The engine automatically attempts to use the **WASAPI** driver for low latency on Windows, falling back to DirectSound or WaveOut if necessary.
 
 ---
 
