@@ -40,17 +40,18 @@ def main():
         if timestamp - start_time > 0.25:
             window = np.vstack(window)
 
-            col_list = ["timestamp", "GSR"]
+            col_list = ["timestamp"]
 
             num = 0
             for idx, item in enumerate(sample):
                 num = idx + 1
-                if num ==1: continue
-                col_list.append(f"Ch{num}")
+                #if num ==1: continue
+                col_list.append(f"EMG{num}")
 
             window_df = pd.DataFrame(data=window, columns=col_list)
-            if num == 1:
-                window_df["Ch2"] = 0
+            window_df.reset_index()
+            # if num == 1:
+            #     window_df["Ch2"] = 0
 
             preprocessed_df = pipeline.preprocess_emg_df(window_df, 250, True)
             feature_df = pipeline.create_feature_df(preprocessed_df,250, 250, 0.5)

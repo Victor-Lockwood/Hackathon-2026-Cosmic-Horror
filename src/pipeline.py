@@ -190,18 +190,8 @@ def main():
 
     # Change these to point at training data CSVs
     # the keys are the labels
-    csv_dict = {
-        "arm_down_01": "../data/Grant/armdown_01_20260227_143904.csv",
-        "arm_up": "../data/Cosmic_Horror/arm up side palm down_20260226_201448.csv",
-        "fist_down_out": "../data/Cosmic_Horror/fist-down-out_20260226_201320.csv",
-        "fist_down_up": "../data/Cosmic_Horror/fist-down-up_20260226_201341.csv",
-        "palm_down_out": "../data/Cosmic_Horror/palm-down-out_20260226_201210.csv",
-        "palm_down_up": "../data/Cosmic_Horror/palm-down-up_20260226_201238.csv",
-        "palm_up_out": "../data/Cosmic_Horror/palm-up-out_20260226_200912.csv",
-        "peace_out": "../data/Cosmic_Horror/peace out_20260226_201518.csv"
-    }
 
-    cvs_dict = {
+    csv_dict = {
         "armdown_01": "../data/Grant/armdown_01_20260227_143904.csv",
         "armdown_02": "../data/Grant/armdown_02_20260227_143914.csv",
         "armdown_03": "../data/Grant/armdown_03_20260227_143923.csv",
