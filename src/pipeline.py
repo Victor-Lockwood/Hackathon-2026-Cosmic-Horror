@@ -194,7 +194,8 @@ def main():
     }
 
     # Feed in the CSVs for training
-    X_batch, y_batch = batch_pipeline(csv_dict, 250, 250, 0.5, True)
+    # Good values I found for window size are 1000 and 250
+    X_batch, y_batch = batch_pipeline(csv_dict, 250, 1000, 0.5, True)
 
     # Train based on CSV data, get out the test X and Y data from the test train split as well as the path the model was saved to
     # You can toy with the n_estimators parameter a bit
