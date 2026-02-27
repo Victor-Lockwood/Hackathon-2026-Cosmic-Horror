@@ -28,6 +28,8 @@ Thumbs.db
 # Data (recordings can be large)
 data/*
 !data/.gitkeep
+!data/Grant/
+!data/Grant/**
 recordings/
 
 # Jupyter
