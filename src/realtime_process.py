@@ -39,7 +39,6 @@ def main():
         # 250ms
         if timestamp - start_time > 0.25:
             window = np.vstack(window)
-            print(f"250ms elapsed {window}")
 
             col_list = ["timestamp", "GSR"]
 
