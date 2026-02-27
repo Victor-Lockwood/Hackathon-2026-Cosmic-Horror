@@ -28,8 +28,8 @@ We turn **biological electrical pulses** into haunting melodies using EMG signal
 Inspired by the rhythmic decay of the stars — built in 24 hours of frantic ritual.
 
 ```
-Biological Static ──► Feature Extraction ──► The Oracle (ML) ──► Sonic Engine ──► Audio
-     (BioRadio)          (pipeline.py)      (RandomForest)     (midi_engine.py) (Void)
+Biological Static ──► The Ritual ──► The Oracle (ML) ──► Sonic Engine ──► Audio
+     (BioRadio)     (cosmic_ritual.py) (RandomForest)  (midi_engine.py)  (Void)
 ```
 
 ---

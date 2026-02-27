@@ -90,6 +90,8 @@ See the [Playlist](playlist.md) page for all available songs.
 !!! note "Velocity Mapping"
     EMG amplitude (0.0 to 1.0) is linearly mapped to MIDI velocity values between **40 and 127**. This ensures even soft gestures produce audible sound while allowing for dynamic expression.
 
+    Velocity updates **dynamically during sustain** — if you squeeze harder while holding a chord, the notes are re-voiced at the new velocity in real time.
+
 ```python
 controller = MidiController(strum_delay_ms=25, debounce_frames=5, gain=1.0)
 ```
@@ -101,7 +103,9 @@ controller = MidiController(strum_delay_ms=25, debounce_frames=5, gain=1.0)
 | Method | Description |
 |--------|------------|
 | `set_instrument("piano")` | Switch instrument directly |
-| `play_chord("Am", velocity=90, duration=1.0)` | Play a chord manually |
+| `play_chord("Am", velocity=90, duration=1.0)` | Play a chord (blocks the calling thread) |
+| `play_chord("Am", blocking=False)` | Play a chord without blocking (notes auto-stop after duration) |
 | `play_note(60, velocity=100, duration=0.5)` | Play a single MIDI note |
+| `play_note(60, blocking=False)` | Play a note without blocking |
 | `panic()` | All notes off (emergency stop) |
 | `get_state()` | Returns dict with current chord, instrument, progression position |

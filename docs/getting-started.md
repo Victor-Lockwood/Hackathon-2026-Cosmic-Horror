@@ -3,7 +3,7 @@
 ## 1. Set up the environment
 
 ```bash
-conda env create -f environment.yml
+make setup
 conda activate hackathon
 ```
 
@@ -15,22 +15,18 @@ This installs Python, all scientific deps, FluidSynth (the C library), and pyflu
 make music
 ```
 
-Or equivalently:
+This runs the `src/midi_demo.py` script, which cycles through instruments and chords to ensure FluidSynth is correctly configured and communicating with your speakers.
 
-```bash
-python src/midi_engine.py
-```
-
-You should hear piano, guitar, and string chords from your speakers. If you hear nothing, check that your system volume is on and the correct output device is selected in Windows Settings.
+If you hear nothing, check that your system volume is on and the correct audio driver (WASAPI is preferred) is available in Windows Settings.
 
 ## 3. Launch the GUI
 
 ```bash
-# With BioRadio connected:
-python -m src.hackathon_gui
-
 # Without hardware (mock data for development):
-python -m src.hackathon_gui --mock
+make gui
+
+# With BioRadio connected:
+make gui-live
 ```
 
 ## 4. Train the classifier
@@ -38,12 +34,32 @@ python -m src.hackathon_gui --mock
 The ML pipeline lives in `src/pipeline.py`. Victor's `main()` trains on the team's 8 gesture classes from recorded EMG data:
 
 ```bash
-cd src && python pipeline.py
+make train
 ```
 
 This produces a saved model in `models/classifier.pkl`.
 
-## 5. Connect MIDI to the classifier
+## 5. Perform the Ritual
+
+Once your classifier is trained and the GUI is streaming to LSL, start the real-time bridge:
+
+```bash
+make ritual
+```
+
+This will:
+
+1. Initialize the MIDI engine (FluidSynth + SoundFont).
+2. Load `models/classifier.pkl` (falls back to a mock classifier if not found).
+3. Search for the `BioRadio` LSL stream (retries up to 8 times, 1 second each).
+4. Process EMG signals in 250ms windows with 50% overlap.
+5. Classify gestures and trigger the MIDI engine.
+
+You can also start the ritual from the GUI by enabling the **Music Mode** checkbox during acquisition. The GUI shows real-time status updates as the ritual connects.
+
+## 6. Manual Integration (Alternative)
+
+If you're building a custom script, connect MIDI to your own classifier loop:
 
 ```python
 from midi_engine import MidiController
@@ -51,11 +67,11 @@ from midi_engine import MidiController
 controller = MidiController()
 controller.start()
 
-# In your real-time classification loop:
+# Called every classification frame:
 controller.on_classification(
-    right_hand="palm_up_out",   # chord
-    left_hand="fist_down_out",  # instrument
-    amplitude=0.73              # EMG amplitude -> volume
+    right_hand="palm_up_out",   # chord selection
+    left_hand="fist_down_out",  # instrument selection
+    amplitude=0.73              # EMG amplitude -> velocity
 )
 
 controller.stop()
