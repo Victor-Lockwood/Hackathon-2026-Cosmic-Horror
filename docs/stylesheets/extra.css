@@ -216,6 +216,15 @@ html { scroll-behavior: smooth; }
   color: #000 !important;
 }
 
+/* The Burning Eye — light mode hero gets a bloodshot eye shape */
+[data-md-color-scheme="default"] .md-typeset .hero {
+  background:
+    radial-gradient(circle 40px at 50% 45%, #1a0000 0%, transparent 100%),
+    radial-gradient(circle 80px at 50% 45%, rgba(180, 0, 0, 0.7) 0%, transparent 100%),
+    radial-gradient(ellipse 55% 40% at 50% 45%, rgba(255, 23, 68, 0.5) 0%, rgba(255, 0, 0, 0.2) 50%, transparent 75%),
+    radial-gradient(ellipse 70% 55% at 50% 45%, rgba(255, 200, 200, 0.3) 0%, transparent 80%);
+}
+
 /* Semantic replacements for the landing page in light mode */
 [data-md-color-scheme="default"] .md-typeset .hero h1 {
   font-size: 0 !important;
@@ -304,6 +313,32 @@ html { scroll-behavior: smooth; }
 
 .mermaid svg {
   filter: drop-shadow(0 0 5px var(--eldritch-purple-glow));
+  max-width: 100%;
+}
+
+/* Give mermaid diagrams breathing room and prevent SVG clipping */
+.md-typeset .mermaid {
+  padding: 1rem 0;
+  overflow: visible;
+}
+
+.md-typeset .mermaid svg {
+  overflow: visible !important;
+}
+
+/* Mermaid edge labels need to be visible in dark mode */
+[data-md-color-scheme="slate"] .mermaid .edgeLabel {
+  background-color: var(--void-bg) !important;
+  color: var(--necrotic-green) !important;
+}
+
+[data-md-color-scheme="slate"] .mermaid .edgeLabel p {
+  color: var(--necrotic-green) !important;
+}
+
+/* Subgraph title text */
+[data-md-color-scheme="slate"] .mermaid .cluster-label span {
+  color: var(--starry-white) !important;
 }
 
 ::-webkit-scrollbar { width: 8px; }
