@@ -14,7 +14,7 @@ setup:
 	@echo "Environment setup complete. To activate the environment, run: conda activate hackathon"
 
 music:
-	@python src/midi_engine.py
+	@python src/midi_demo.py
 
 docs:
 	@zensical serve
