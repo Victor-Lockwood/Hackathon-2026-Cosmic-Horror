@@ -93,12 +93,14 @@ def create_feature_df(df, fs, window_ms=250, overlap=0.5, labels=None):
 
     return feature_df
 
-def pipeline(csv, fs, window_size, overlap, label):
+def pipeline(csv, fs, window_size, overlap, label, pipeline_df=None):
     """
     Pipeline for preprocessing.  Named somewhat poorly.  I'm tired.
     """
 
-    pipeline_df = pd.read_csv(csv, skiprows=8)
+    if pipeline_df is None:
+        pipeline_df = pd.read_csv(csv, skiprows=8)
+
     preprocessed_df = preprocess_emg_df(pipeline_df, 250, True)
     pipeline_feature_df = create_feature_df(preprocessed_df, fs, window_size, overlap)
     pipeline_feature_df['label'] = label
