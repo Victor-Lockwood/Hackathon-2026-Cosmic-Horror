@@ -1,0 +1,15 @@
+{
+    "title": "Love Story",
+    "artist": "Taylor Swift",
+    "bpm": 119,
+    "sections": {
+        "verse":  ["G", "D", "Em", "C"],
+        "chorus": ["G", "D", "Em", "C"]
+    },
+    "full_structure": [
+        "verse", "verse",
+        "chorus",
+        "verse",
+        "chorus", "chorus"
+    ]
+}

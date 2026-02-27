@@ -1,0 +1,17 @@
+{
+    "title": "Save Your Tears",
+    "artist": "The Weeknd ft. Ariana Grande",
+    "bpm": 118,
+    "sections": {
+        "verse":   ["C", "Am", "Em", "G"],
+        "chorus":  ["Dm", "Am", "F", "G"],
+        "refrain": ["C", "Am", "Em", "G"]
+    },
+    "full_structure": [
+        "verse", "verse",
+        "chorus", "refrain",
+        "verse",
+        "chorus", "refrain",
+        "chorus", "refrain"
+    ]
+}
