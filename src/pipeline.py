@@ -198,7 +198,7 @@ def main():
 
     # Train based on CSV data, get out the test X and Y data from the test train split as well as the path the model was saved to
     # You can toy with the n_estimators parameter a bit
-    X_test, y_test, path = train_classifier(X_batch, y_batch, math.floor(math.sqrt(X_batch.shape[1])))
+    X_test, y_test, path = train_classifier(X_batch, y_batch, 100)
 
     # Run the classifier on input data.  Path is to where the model is saved
     # If you don't have the real labels to run against, pass in "None" for y and set print_stats=False (default)
