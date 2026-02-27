@@ -32,9 +32,6 @@ dependencies:
   # Serial Communication (BioRadio)
   - pyserial>=3.5
 
-  # Audio Synthesis (MIDI engine)
-  - fluidsynth>=2.3
-
   # Pip-only packages
   - pip:
     - pylsl
